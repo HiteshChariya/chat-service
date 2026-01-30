@@ -4,7 +4,9 @@ import com.expense.chat_service.dto.ChatMessageDto;
 import com.expense.chat_service.dto.ChatRoomDto;
 import com.expense.chat_service.entity.ChatMessage;
 import com.expense.chat_service.entity.ChatRoom;
+import com.expense.chat_service.entity.ChatRoomRead;
 import com.expense.chat_service.repository.ChatMessageRepository;
+import com.expense.chat_service.repository.ChatRoomReadRepository;
 import com.expense.chat_service.repository.ChatRoomRepository;
 import com.expense.chat_service.request.Principle;
 import com.expense.chat_service.response.BaseResponse;
@@ -31,6 +33,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomReadRepository chatRoomReadRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserService userService;
 
@@ -39,16 +42,19 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ChatRoomDto> getRooms(Principle principle) {
+        List<ChatRoomDto> list;
         if (isAdmin(principle)) {
-            return chatRoomRepository.findAllByOrderByUpdatedAtDesc().stream()
+            list = chatRoomRepository.findAllByOrderByUpdatedAtDesc().stream()
                     .map(this::toRoomDto)
                     .collect(Collectors.toList());
+        } else {
+            list = chatRoomRepository.findByUserId(principle.getId())
+                    .map(List::of)
+                    .map(rooms -> rooms.stream().map(this::toRoomDto).collect(Collectors.toList()))
+                    .orElse(List.of());
         }
-        // User: return only their room
-        return chatRoomRepository.findByUserId(principle.getId())
-                .map(List::of)
-                .map(rooms -> rooms.stream().map(this::toRoomDto).collect(Collectors.toList()))
-                .orElse(List.of());
+        list.forEach(dto -> dto.setUnreadCount(getUnreadCount(dto.getId(), principle)));
+        return list;
     }
 
     @Override
@@ -131,6 +137,45 @@ public class ChatServiceImpl implements ChatService {
         // Broadcast to all subscribers of this room
         messagingTemplate.convertAndSend("/topic/room/" + roomId, dto);
         return dto;
+    }
+
+    @Override
+    @Transactional
+    public void markRoomAsRead(Long roomId, Principle principle) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Chat room not found: " + roomId));
+        if (!canAccessRoom(room, principle)) {
+            throw new AccessDeniedException("You do not have access to this chat room");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        chatRoomReadRepository.findByChatRoomIdAndUserId(roomId, principle.getId())
+                .ifPresentOrElse(
+                        read -> {
+                            read.setLastReadAt(now);
+                            chatRoomReadRepository.save(read);
+                        },
+                        () -> chatRoomReadRepository.save(ChatRoomRead.builder()
+                                .chatRoom(room)
+                                .userId(principle.getId())
+                                .lastReadAt(now)
+                                .build())
+                );
+    }
+
+    /** Sentinel for "never read" - valid timestamp in PostgreSQL (year 1); MIN would be out of range. */
+    private static final LocalDateTime EPOCH_NEVER_READ = LocalDateTime.of(1, 1, 1, 0, 0, 0);
+
+    /**
+     * Count messages in the room sent by the other party (not the current user) that are after
+     * the current user's last read timestamp. If they have never read, all messages from the other party count.
+     */
+    private int getUnreadCount(Long roomId, Principle principle) {
+        Long currentUserId = principle.getId();
+        LocalDateTime after = chatRoomReadRepository.findByChatRoomIdAndUserId(roomId, currentUserId)
+                .map(ChatRoomRead::getLastReadAt)
+                .orElse(EPOCH_NEVER_READ);
+        return (int) chatMessageRepository.countByChatRoomIdAndSenderIdNotAndCreatedAtAfter(
+                roomId, currentUserId, after);
     }
 
     private boolean isAdmin(Principle principle) {

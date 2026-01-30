@@ -33,4 +33,9 @@ public interface ChatService {
      * Send a message and broadcast to room subscribers. Returns the saved message DTO.
      */
     ChatMessageDto sendMessage(Long roomId, String content, Principle principle);
+
+    /**
+     * Mark a room as read by the current user (updates last_read_at). Used when user opens the room.
+     */
+    void markRoomAsRead(Long roomId, Principle principle);
 }

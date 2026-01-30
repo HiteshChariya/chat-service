@@ -25,3 +25,12 @@
 
 -- CREATE INDEX idx_chat_message_room ON conf.chat_message(chat_room_id);
 -- CREATE INDEX idx_chat_message_created ON conf.chat_message(created_at);
+
+-- conf.chat_room_read: when each user last read each room (for unread counts)
+-- CREATE TABLE conf.chat_room_read (
+--   id BIGSERIAL PRIMARY KEY,
+--   chat_room_id BIGINT NOT NULL REFERENCES conf.chat_room(id) ON DELETE CASCADE,
+--   user_id BIGINT NOT NULL,
+--   last_read_at timestamp without time zone NOT NULL DEFAULT now(),
+--   UNIQUE(chat_room_id, user_id)
+-- );

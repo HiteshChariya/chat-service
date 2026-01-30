@@ -65,6 +65,14 @@ public class ChatController {
         return ResponseEntity.ok(chatService.sendMessage(roomId, content, principle));
     }
 
+    @PostMapping("/rooms/{roomId}/read")
+    public ResponseEntity<Void> markRoomAsRead(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal Principle principle) {
+        chatService.markRoomAsRead(roomId, principle);
+        return ResponseEntity.ok().build();
+    }
+
     /**
      * WebSocket endpoint: client sends to /app/chat.send with payload { chatRoomId, content }.
      * Principal is taken from message headers (set at CONNECT) so the payload binds only to SendMessageRequest.
