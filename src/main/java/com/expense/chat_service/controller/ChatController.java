@@ -10,12 +10,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @RestController
 @RequestMapping("/chat")
@@ -31,7 +35,7 @@ public class ChatController {
 
     @GetMapping("/rooms/{roomId}")
     public ResponseEntity<ChatRoomDto> getRoom(@PathVariable Long roomId,
-                                              @AuthenticationPrincipal Principle principle) {
+                                               @AuthenticationPrincipal Principle principle) {
         return ResponseEntity.ok(chatService.getRoom(roomId, principle));
     }
 
@@ -63,11 +67,25 @@ public class ChatController {
 
     /**
      * WebSocket endpoint: client sends to /app/chat.send with payload { chatRoomId, content }.
-     * Message is saved and broadcast to /topic/room/{roomId}.
+     * Principal is taken from message headers (set at CONNECT) so the payload binds only to SendMessageRequest.
      */
     @MessageMapping("/chat.send")
     public ChatMessageDto sendMessageViaWebSocket(@Payload @Valid SendMessageRequest request,
-                                                  @AuthenticationPrincipal Principle principle) {
+                                                  SimpMessageHeaderAccessor accessor) {
+        Principle principle = getPrincipleFromAccessor(accessor);
+        if (principle == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Not authenticated");
+        }
         return chatService.sendMessage(request.getChatRoomId(), request.getContent(), principle);
+    }
+
+    private static Principle getPrincipleFromAccessor(SimpMessageHeaderAccessor accessor) {
+        if (accessor == null || accessor.getUser() == null) return null;
+        Object user = accessor.getUser();
+        if (user instanceof UsernamePasswordAuthenticationToken auth) {
+            Object p = auth.getPrincipal();
+            if (p instanceof Principle pr) return pr;
+        }
+        return null;
     }
 }

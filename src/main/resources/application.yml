@@ -27,6 +27,17 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400}
   audience: ${JWT_AUDIENCE:31b4428c-275e-11ec-9621-0242ac130002}
 
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 2000
+        readTimeout: 2000
+
 logging:
   level:
     com.expense.chat_service: DEBUG
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://localhost:8019/user-service/api}

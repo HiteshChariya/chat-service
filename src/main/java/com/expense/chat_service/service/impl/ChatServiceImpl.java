@@ -7,7 +7,10 @@ import com.expense.chat_service.entity.ChatRoom;
 import com.expense.chat_service.repository.ChatMessageRepository;
 import com.expense.chat_service.repository.ChatRoomRepository;
 import com.expense.chat_service.request.Principle;
+import com.expense.chat_service.response.BaseResponse;
+import com.expense.chat_service.response.UserDataResponse;
 import com.expense.chat_service.service.ChatService;
+import com.expense.chat_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +32,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserService userService;
 
     private static final int DEFAULT_PAGE_SIZE = 50;
 
@@ -140,12 +144,29 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatRoomDto toRoomDto(ChatRoom room) {
-        return ChatRoomDto.builder()
-                .id(room.getId())
-                .userId(room.getUserId())
-                .createdAt(room.getCreatedAt())
-                .updatedAt(room.getUpdatedAt())
-                .build();
+        try {
+            BaseResponse<List<UserDataResponse>> response = userService.userDetailsById(room.getUserId());
+            log.info("user detail : {}", response);
+            UserDataResponse userDataResponses = response.getData().get(0);
+            if (userDataResponses != null) {
+                return ChatRoomDto.builder()
+                        .id(room.getId())
+                        .userId(room.getUserId())
+                        .userDisplayName(userDataResponses.getFirstName() + " " + userDataResponses.getLastName())
+                        .createdAt(room.getCreatedAt())
+                        .updatedAt(room.getUpdatedAt())
+                        .build();
+            } else {
+                return ChatRoomDto.builder()
+                        .id(room.getId())
+                        .userId(room.getUserId())
+                        .createdAt(room.getCreatedAt())
+                        .updatedAt(room.getUpdatedAt())
+                        .build();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private ChatMessageDto toMessageDto(ChatMessage msg) {
