@@ -10,7 +10,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/expense_tracker}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -23,7 +23,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  secret: ${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400}
   audience: ${JWT_AUDIENCE:31b4428c-275e-11ec-9621-0242ac130002}
 
@@ -36,7 +36,7 @@ feign:
 
 logging:
   level:
-    com.expense.chat_service: DEBUG
+    com.expense.chat_service: INFO
 
 user:
   service:

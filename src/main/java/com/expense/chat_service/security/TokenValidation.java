@@ -6,6 +6,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -20,6 +21,9 @@ public class TokenValidation {
 
     @Autowired
     private TokenGenerator tokenGenerator;
+
+    @Value("${jwt.audience:}")
+    private String audience;
 
     public ValidationResponse handleRequest(String authorizationHeader) {
         ValidationResponse validationResponse = new ValidationResponse();
@@ -74,7 +78,15 @@ public class TokenValidation {
 
     public Boolean validateToken(String token, String loginKey) {
         final String username = extractUsername(token);
-        return username.equals(loginKey) && !isTokenExpired(token);
+        return username.equals(loginKey) && !isTokenExpired(token) && isAudienceValid(token);
+    }
+
+    private Boolean isAudienceValid(String token) {
+        if (audience == null || audience.isBlank()) {
+            return true;
+        }
+        String tokenAudience = extractClaim(token, Claims::getAudience);
+        return audience.equals(tokenAudience);
     }
 
     private Principle getPrincipleFromClaims(String token) {

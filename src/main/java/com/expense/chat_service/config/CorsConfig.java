@@ -9,10 +9,16 @@ public class CorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        String allowedOriginsEnv = System.getenv("CORS_ALLOWED_ORIGINS");
+        if (allowedOriginsEnv == null || allowedOriginsEnv.isEmpty()) {
+            allowedOriginsEnv = System.getProperty("cors.allowed.origins", "http://localhost:5173");
+        }
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173") // Vite default
+                .allowedOrigins(allowedOriginsEnv.split(","))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowedHeaders("Authorization", "Content-Type", "X-Requested-With")
+                .exposedHeaders("Authorization")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

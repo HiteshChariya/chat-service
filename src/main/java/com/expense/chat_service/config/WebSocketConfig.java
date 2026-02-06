@@ -63,26 +63,28 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (StringUtils.isBlank(token)) {
                         token = accessor.getFirstNativeHeader("token");
                     }
-                    if (StringUtils.isNotBlank(token)) {
-                        if (token.startsWith("Bearer ")) {
-                            token = token.substring(7).trim();
-                        }
-                        ValidationResponse validationResponse = tokenValidation.handleRequest("Bearer " + token);
-                        if (Boolean.TRUE.equals(validationResponse.getTokenValidated()) && validationResponse.getUser() != null) {
-                            Principle principle = validationResponse.getUser();
-                            String role = principle.getUserType() != null ? principle.getUserType() : "USER";
-                            List<SimpleGrantedAuthority> authorities = Collections.singletonList(
-                                    new SimpleGrantedAuthority("ROLE_" + role));
-                            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                                    principle, null, authorities);
-                            accessor.setUser(auth);
-                            log.debug("WebSocket authenticated user: {} role: {}", principle.getEmail(), role);
-                        }
+                    if (StringUtils.isBlank(token)) {
+                        throw new IllegalArgumentException("Missing Authorization token");
                     }
+                    if (token.startsWith("Bearer ")) {
+                        token = token.substring(7).trim();
+                    }
+                    ValidationResponse validationResponse = tokenValidation.handleRequest("Bearer " + token);
+                    if (!Boolean.TRUE.equals(validationResponse.getTokenValidated()) || validationResponse.getUser() == null) {
+                        throw new IllegalArgumentException("Invalid Authorization token");
+                    }
+                    Principle principle = validationResponse.getUser();
+                    String role = principle.getUserType() != null ? principle.getUserType() : "USER";
+                    List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                            new SimpleGrantedAuthority("ROLE_" + role));
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            principle, null, authorities);
+                    accessor.setUser(auth);
+                    log.debug("WebSocket authenticated user: {} role: {}", principle.getEmail(), role);
+                }
                 }
                 return message;
             }
         });
     }
 }
-

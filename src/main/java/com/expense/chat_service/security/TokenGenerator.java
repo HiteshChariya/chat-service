@@ -10,7 +10,7 @@ import java.security.Key;
 @Component
 public class TokenGenerator {
 
-    @Value("${jwt.secret:${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437}}")
+    @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.expiration:86400}")
