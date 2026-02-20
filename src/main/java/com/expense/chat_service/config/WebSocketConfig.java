@@ -82,7 +82,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     accessor.setUser(auth);
                     log.debug("WebSocket authenticated user: {} role: {}", principle.getEmail(), role);
                 }
-                }
+
                 return message;
             }
         });

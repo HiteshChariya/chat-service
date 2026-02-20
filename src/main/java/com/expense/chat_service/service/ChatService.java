@@ -38,4 +38,14 @@ public interface ChatService {
      * Mark a room as read by the current user (updates last_read_at). Used when user opens the room.
      */
     void markRoomAsRead(Long roomId, Principle principle);
+
+    /**
+     * Get trip-group chat messages. Access is restricted to trip members.
+     */
+    List<ChatMessageDto> getTripMessages(Long tripId, int page, int size, Principle principle);
+
+    /**
+     * Send a message in trip-group chat and broadcast to trip topic.
+     */
+    ChatMessageDto sendTripMessage(Long tripId, String content, Principle principle);
 }

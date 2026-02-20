@@ -3,6 +3,7 @@ package com.expense.chat_service.controller;
 import com.expense.chat_service.dto.ChatMessageDto;
 import com.expense.chat_service.dto.ChatRoomDto;
 import com.expense.chat_service.dto.SendMessageRequest;
+import com.expense.chat_service.dto.SendTripMessageRequest;
 import com.expense.chat_service.request.Principle;
 import com.expense.chat_service.service.ChatService;
 import jakarta.validation.Valid;
@@ -73,6 +74,27 @@ public class ChatController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/trips/{tripId}/messages")
+    public ResponseEntity<List<ChatMessageDto>> getTripMessages(
+            @PathVariable Long tripId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @AuthenticationPrincipal Principle principle) {
+        return ResponseEntity.ok(chatService.getTripMessages(tripId, page, size, principle));
+    }
+
+    @PostMapping("/trips/{tripId}/messages")
+    public ResponseEntity<ChatMessageDto> sendTripMessage(
+            @PathVariable Long tripId,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal Principle principle) {
+        String content = body != null ? body.get("content") : null;
+        if (content == null || content.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(chatService.sendTripMessage(tripId, content, principle));
+    }
+
     /**
      * WebSocket endpoint: client sends to /app/chat.send with payload { chatRoomId, content }.
      * Principal is taken from message headers (set at CONNECT) so the payload binds only to SendMessageRequest.
@@ -85,6 +107,16 @@ public class ChatController {
             throw new ResponseStatusException(UNAUTHORIZED, "Not authenticated");
         }
         return chatService.sendMessage(request.getChatRoomId(), request.getContent(), principle);
+    }
+
+    @MessageMapping("/chat.trip.send")
+    public ChatMessageDto sendTripMessageViaWebSocket(@Payload @Valid SendTripMessageRequest request,
+                                                      SimpMessageHeaderAccessor accessor) {
+        Principle principle = getPrincipleFromAccessor(accessor);
+        if (principle == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Not authenticated");
+        }
+        return chatService.sendTripMessage(request.getTripId(), request.getContent(), principle);
     }
 
     private static Principle getPrincipleFromAccessor(SimpMessageHeaderAccessor accessor) {
