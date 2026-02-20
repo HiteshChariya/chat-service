@@ -1,5 +1,5 @@
 server:
-  port: 8087
+  port: 8020
   servlet:
     context-path: /chat-service/api
 

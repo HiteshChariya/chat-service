@@ -170,7 +170,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ChatMessageDto> getTripMessages(Long tripId, int page, int size, Principle principle) {
         tripAccessService.requireTripMembership(tripId, principle);
         ChatRoom tripRoom = getOrCreateTripRoom(tripId);
@@ -179,7 +179,7 @@ public class ChatServiceImpl implements ChatService {
                 .getContent()
                 .stream()
                 .map(message -> toTripMessageDto(message, tripId))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
